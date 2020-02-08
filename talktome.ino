@@ -14,7 +14,8 @@ int NUM_SOLENOIDS = 5;
 int lastSolenoidTestTime = 0;
 unsigned long lastPiezoProcessingTime = 0;
 int filtered_piezo_recordings[] = {0, 0, 0, 0, 0};
-int raw_piezo_recordings[] = {0, 0, 0, 0, 0};
+const int NUM_PIEZO_MEMORY = 2;
+int raw_piezo_recordings[5];
 
 int uno = 0;
 int due = 1;
@@ -182,19 +183,25 @@ void resetPiezoValues() {
 }
 
 void updatePiezoValues() {
+  //piezo recordings store 2 values per piezo, one for current and one for previous.
+  // we can look at 3 values at once. current, the one before that, and the one before that
+  
+//  int lastPiezoIdx = count % NUM_PIEZO_MEMORY;
+//  int lastLastPiezoIdx = (count - 1) + NUM_PIEZO_MEMORY % NUM_PIEZO_MEMORY;
   for (int i = 0; i < NUM_PIEZOS; i++) {
     bool recentlyHitChime = millis() - micIgnoreTimes[i] < 250;
     if (!recentlyHitChime) {
       float raw = analogRead(PIEZO_PINS[i]);
-//      float clean = 0;
-//      if (raw < 10) {
-//        clean = 0;
-//      } else if (raw < 200) {
-//        clean = 1;
-//      } else {
-//        clean = 2;
+
+//      bool lastRecordingWasAscending = raw_piezo_recordings[i][lastPiezoIdx] - raw_piezo_recordings[i][lastLastPiezoIdx] > 40;
+//      bool currentRecordingIsDescending = raw - raw_piezo_recordings[i][lastPiezoIdx] < 0;
+      
+//      if (lastRecordingWasAscending && currentRecordingIsDescending) {
+//        filtered_piezo_recordings[i] = raw;
 //      }
-      if (raw - raw_piezo_recordings[i] > 40) {
+
+      int value = raw - raw_piezo_recordings[i];
+      if (value > 40 && value < 300) {
         filtered_piezo_recordings[i] = raw;    
       }
 
@@ -219,8 +226,8 @@ void setUpAllSolenoidPins() {
 }
 
 void testAllSolenoids() {
-  int spacing = 350;
-  int counter = count % spacing * NUM_SOLENOIDS; // when running this routine, only execute it every 10000 frames
+  int spacing = 7;
+  int counter = count % (spacing * NUM_SOLENOIDS + 300 /* buffer */); // when running this routine, only execute it every 10000 frames
   
   if (counter == 0) {
      strikeChime(0);
